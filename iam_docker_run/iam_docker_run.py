@@ -13,7 +13,7 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.4'
+__version__ = '0.1.5'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -109,6 +109,8 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     volume_mount = '-v {}:{}'.format(
         host_source_path,
         container_source_path)
+    dns = "--dns {}".format(args.dns) if args.dns else None
+    dns_search = "--dns-search {}".format(args.dns_search) if args.dns_search else None
 
     command = Template(single_line_string("""
         docker run
@@ -130,8 +132,8 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             'env_file': "--env-file {}".format(env_tmpfile) if env_tmpfile else '',
             'v': '' if args.no_volume else volume_mount,
             'entrypoint': entrypoint,
-            'dns': args.dns or '',
-            'dns_search': args.dns_search or '',
+            'dns': dns or '',
+            'dns_search': dns_search or '',
             'image': args.image,
             'cmd': cmd
         })
