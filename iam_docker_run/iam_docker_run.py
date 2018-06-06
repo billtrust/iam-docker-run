@@ -13,7 +13,7 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.5'
+__version__ = '0.1.6'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -111,6 +111,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
         container_source_path)
     dns = "--dns {}".format(args.dns) if args.dns else None
     dns_search = "--dns-search {}".format(args.dns_search) if args.dns_search else None
+    docker_volume = '-v /var/run/docker.sock:/var/run/docker.sock'
 
     command = Template(single_line_string("""
         docker run
@@ -119,6 +120,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             $p
             $env_file
             $v
+            $mount_docker
             $entrypoint
             $dns
             $dns_search
@@ -131,6 +133,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             'p': p,
             'env_file': "--env-file {}".format(env_tmpfile) if env_tmpfile else '',
             'v': '' if args.no_volume else volume_mount,
+            'mount_docker': docker_volume if args.mount_docker else '',
             'entrypoint': entrypoint,
             'dns': dns or '',
             'dns_search': dns_search or '',
@@ -156,6 +159,8 @@ def parse_args():
                         help='The path (absolute) where your source code will be mounted into the container.')
     parser.add_argument('--no-volume', action='store_true', default=False,
                         help='Docker run will mount a volume to your source code path by default, unless this is specified.')
+    parser.add_argument('--mount-docker', action='store_true', default=False,
+                        help='Mount the docker sock volume to enable DIND')
     parser.add_argument('--full-entrypoint',
                         help='The full entrypoint to override, multiple words are okay')
     parser.add_argument('--entrypoint', required=False,
