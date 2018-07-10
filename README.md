@@ -182,6 +182,17 @@ To turn on verbose output for debugging, set the `--verbose` argument.
 
 A goal of this project was to be as easy as possible for developers to use and to allow the greatest portability.  To that end, the temporary AWS credentials are generated just once before the container starts, rather than requiring a more complex setup where an additional container would run all the time and regenerate credentials.  When the temp credentials expire (the STS max of 1 hour), the application will start experiencing expired credential exceptions.  For this among other reasons is why you would not use this tool in any environment other than local development or in your build/CI/CD workflow where usage periods are short and the container can be restarted easily and often.
 
+## Publishing Updates to PyPi
+
+For the maintainer - to publish an updated version of Iam-Docker-Run, increment the version number in iam_docker_run.py and run the following:
+
+```shell
+docker build -t billtrust/iam-docker-run:build .
+docker run --rm -it --entrypoint python billtrust/iam-docker-run:build setup.py publish
+```
+
+At the prompts, enter the username and password to the Billtrust pypi.org repo.
+
 ## License
 
 MIT License

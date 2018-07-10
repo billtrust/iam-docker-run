@@ -6,4 +6,6 @@ RUN apt update -y && \
 
 WORKDIR /app
 
+COPY . .
+
 ENTRYPOINT ["/bin/bash"]

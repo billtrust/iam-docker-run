@@ -13,7 +13,7 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.6'
+__version__ = '0.1.7'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -79,7 +79,12 @@ def build_docker_run_command(args, container_name, env_tmpfile):
         entrypoint = args.entrypoint or ''
         cmd = args.cmd or ''
 
-    runmode = '-d' if args.d else ''
+    if args.d:
+        runmode = '-d'
+    elif args.interactive:
+        runmode = '-it'
+    else:
+        runmode = ''
     if args.shell:
         if runmode:
             print('WARNING: --shell specified, overriding runmode to -it')
@@ -175,6 +180,8 @@ def parse_args():
                         help='Passthrough to docker -p, e.g. 8080:80')
     parser.add_argument('-d', action='store_true', default=False,
                         help='Run Docker in detached mode')
+    parser.add_argument('--interactive', action='store_true', default=False,
+                        help='Run Docker in interactive terminal mode (-it)')
     parser.add_argument('--shell', action='store_true', default=False)
     parser.add_argument('--region', required=False)
     parser.add_argument('--verbose', action='store_true', default=False)
