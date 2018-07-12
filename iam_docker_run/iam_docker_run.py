@@ -13,7 +13,7 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.8'
+__version__ = '0.1.9'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -91,8 +91,9 @@ def build_docker_run_command(args, container_name, env_tmpfile):
         runmode = '-it'
 
     p = ''
-    for portmap in args.portmaps:
-        p += '-p {} '.format(portmap)
+    if args.portmaps:
+        for portmap in args.portmaps:
+            p += '-p {} '.format(portmap)
 
     if not os.path.exists(env_tmpfile):
         env_tmpfile = None
