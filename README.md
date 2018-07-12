@@ -97,6 +97,15 @@ $ iam_docker_run \
 
 The `--portmap 30000:3000` argument in this example would take a HTTP server listening in the container on port 3000 and maps it to port 30000 on your laptop.
 
+Note that you can use multiple portmaps as follows:
+
+```shell
+$ iam_docker_run \
+    --image mycompany/myservice \
+    --aws-role-name role-myservice-task \
+    --portmap 4430:443 8080:80
+```
+
 ### Shell
 
 If you want to debug something in the container, just add a `--shell` argument and it will override the entrypoing with `/bin/bash`.  If you wish to use an alternate shell, you can override this with the following enrivonment variable:
@@ -187,7 +196,7 @@ A goal of this project was to be as easy as possible for developers to use and t
 For the maintainer - to publish an updated version of Iam-Docker-Run, increment the version number in iam_docker_run.py and run the following:
 
 ```shell
-docker build -t billtrust/iam-docker-run:build .
+docker build -f ./Dockerfile.buildenv -t billtrust/iam-docker-run:build .
 docker run --rm -it --entrypoint python billtrust/iam-docker-run:build setup.py publish
 ```
 

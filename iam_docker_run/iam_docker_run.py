@@ -13,7 +13,7 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.7'
+__version__ = '0.1.8'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -79,7 +79,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
         entrypoint = args.entrypoint or ''
         cmd = args.cmd or ''
 
-    if args.d:
+    if args.detached:
         runmode = '-d'
     elif args.interactive:
         runmode = '-it'
@@ -89,7 +89,10 @@ def build_docker_run_command(args, container_name, env_tmpfile):
         if runmode:
             print('WARNING: --shell specified, overriding runmode to -it')
         runmode = '-it'
-    p = '-p {}'.format(args.p) if args.p else ''
+
+    p = ''
+    for portmap in args.portmaps:
+        p += '-p {} '.format(portmap)
 
     if not os.path.exists(env_tmpfile):
         env_tmpfile = None
@@ -176,9 +179,11 @@ def parse_args():
                         help='Passthrough to docker --dns')
     parser.add_argument('--dns-search', required=False,
                         help='Passthrough to docker --dns-search')
-    parser.add_argument('-p', required=False,
+    parser.add_argument('-p', '--portmap', required=False,
+                        nargs = '*', dest = "portmaps",
                         help='Passthrough to docker -p, e.g. 8080:80')
-    parser.add_argument('-d', action='store_true', default=False,
+    parser.add_argument('-d', '--detached', default=False,
+                        action='store_true', dest="detached",
                         help='Run Docker in detached mode')
     parser.add_argument('--interactive', action='store_true', default=False,
                         help='Run Docker in interactive terminal mode (-it)')
@@ -258,7 +263,7 @@ def main():
     os.system(docker_run_command)
 
     exit_code = None
-    if not args.d:
+    if not args.detached:
         try:
             exit_code = docker_cli_utils.get_docker_inspect_exit_code(container_name)
             print("Container exited with code {}".format(exit_code))
