@@ -13,7 +13,7 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.9'
+__version__ = '0.1.10'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -36,17 +36,19 @@ def generate_temp_env_file(access_key, secret_key, session_token, region, custom
     envs = []
     if custom_env_file:
         if custom_env_file == DEFAULT_CUSTOM_ENV_FILE:
-            if not os.path.exists(custom_env_file):
+            if not os.path.isfile(custom_env_file):
                 if VERBOSE_MODE:
                     print("{} does not exist".format(custom_env_file))
                 # silently ignore when default custom env file is missing
                 custom_env_file = None
+    if custom_env_file:
         try:
             custom_envs = open(custom_env_file, "r")
             envs = custom_envs.read().splitlines()
             custom_envs.close()
         except Exception as e:
-            print("Error processing custom environment variables file: {}".format(str(e)))
+            print("Error processing custom environment variables file {}: {}".format(
+                custom_env_file, str(e)))
     envs.append('AWS_ACCESS_KEY_ID=' + access_key)
     envs.append('AWS_SECRET_ACCESS_KEY=' + secret_key)
     envs.append('AWS_SESSION_TOKEN=' + session_token)
@@ -251,9 +253,9 @@ def main():
             container_name_file = \
                 docker_cli_utils.write_container_name_temp_file(container_name, path_prefix)
             print("Container name file: {}".format(container_name_file))
-        except docker_cli_utils.ContainerNameTempFileError:
+        except docker_cli_utils.ContainerNameTempFileError as e:
             if VERBOSE_MODE:
-                print("Error writing container name temporary file.")
+                print("Error writing container name temporary file")
 
     docker_run_command = build_docker_run_command(
         args,
