@@ -44,7 +44,7 @@ setup(name='iam-docker-run',
         'boto3>=1.7.20, <2.0',
         'botocore>=1.10.20, <2.0'
         ],
-      packages=find_packages(),
+      packages=find_packages(exclude=['pypandoc']),
       entry_points={
         "console_scripts": [
             'iam-docker-run = iam_docker_run.iam_docker_run:main',
