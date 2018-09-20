@@ -74,6 +74,10 @@ $ iam_docker_run \
 
 If you want to prevent it from mounting a volume (if say you are using this from Jenkins, etc.) then you can add `--no-volume`.
 
+#### Overcoming SELinux with volume mounts
+
+If you are running SELinux and experience permission denied issues when mounting volumes, specify the `--selinux` argument, which will alter the dockr run volume mount argument so that the volume is readable.
+
 #### Enable Docker in Docker'
 
 If you want to enable Docker in Docker, you can mount the Docker socket by adding the `--mount-docker` argument.  If you then install Docker in the container with the below script and use the Docker CLI from within the container.

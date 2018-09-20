@@ -13,7 +13,7 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.10'
+__version__ = '0.1.11'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -120,6 +120,9 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     volume_mount = '-v {}:{}'.format(
         host_source_path,
         container_source_path)
+    # http://www.projectatomic.io/blog/2015/06/using-volumes-with-docker-can-cause-problems-with-selinux/
+    if args.selinux:
+        volume_mount += ':Z'
     dns = "--dns {}".format(args.dns) if args.dns else None
     dns_search = "--dns-search {}".format(args.dns_search) if args.dns_search else None
     docker_volume = '-v /var/run/docker.sock:/var/run/docker.sock'
@@ -191,6 +194,8 @@ def parse_args():
     parser.add_argument('--interactive', action='store_true', default=False,
                         help='Run Docker in interactive terminal mode (-it)')
     parser.add_argument('--shell', action='store_true', default=False)
+    parser.add_argument('--selinux', action='store_true', default=False,
+                        help='Work around SELinux volume mount issues')
     parser.add_argument('--region', required=False)
     parser.add_argument('--verbose', action='store_true', default=False)
 
