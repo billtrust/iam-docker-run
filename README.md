@@ -70,9 +70,13 @@ $ iam_docker_run \
     --container-source-path /myapp
 ```
 
-#### Preventing any volume mount
+#### Preventing the default volume mount
 
-If you want to prevent it from mounting a volume (if say you are using this from Jenkins, etc.) then you can add `--no-volume`.
+If you want to prevent it from mounting the default volume (if say you are using this from Jenkins, etc.) then you can add `--no-volume`.
+
+#### Additional volume mounts
+
+You can mount additional volumes by `-v` or `--volume`, which is passthrough to the `docker -v` argument.  These are additive with the default volume mount (unless `--no-volume` is specified) and the docker in docker mount.
 
 #### Overcoming SELinux with volume mounts
 
@@ -107,7 +111,8 @@ Note that you can use multiple portmaps as follows:
 $ iam_docker_run \
     --image mycompany/myservice \
     --aws-role-name role-myservice-task \
-    --portmap 4430:443 8080:80
+    -p 4430:443 \
+    -p 8080:80
 ```
 
 ### Shell
@@ -139,6 +144,10 @@ $ iam-docker-run \
 If you have environment variables you want passed to Docker via `docker run --env-file`, with iam-docker-run you would use `--custom-env-file`.  The reason for this is that iam-docker-run is already using a file to pass into Docker with the environment variables for the AWS temporary credentials, so if you have environment variables to add to that, specify a `--custom-env-file` and that will be concatenated to the env file created by iam-docker-run.
 
 Default behavior is to look for a file called `iam-docker-run.env`.  If this file is not found it is silently ignored.  This is helpful if you have an environment variable such as `AWS_ENV=dev` which you want loaded each time without specifying this argument.  Hopefully the rest of your variables are loaded into the environment from a remote configuration store such as AWS SSM Parameter Store.  If you need help with this see [ssm-starter](https://github.com/billtrust/ssm-starter).
+
+### Custom environment arguments
+
+Additionally you can pass environment variables by `-e` or `--envvar`, which is passthrough to the `docker -e` argument.  These are additive with the custom environment variables file.
 
 ### Foreground / background
 

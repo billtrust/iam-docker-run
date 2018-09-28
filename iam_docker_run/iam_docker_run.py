@@ -13,7 +13,7 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.11'
+__version__ = '0.1.12'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -29,7 +29,13 @@ def single_line_string(string):
     return string
 
 
-def generate_temp_env_file(access_key, secret_key, session_token, region, custom_env_file=None):
+def generate_temp_env_file(
+    access_key,
+    secret_key,
+    session_token,
+    region,
+    custom_env_file,
+    custom_env_args):
     """Write out a file with the environment variables for the AWS credentials which can be passed
     into Docker.  If additional environment variables beyond the AWS creds are desired you can
     also specify a custom_env_file which contains them."""
@@ -49,6 +55,9 @@ def generate_temp_env_file(access_key, secret_key, session_token, region, custom
         except Exception as e:
             print("Error processing custom environment variables file {}: {}".format(
                 custom_env_file, str(e)))
+    if custom_env_args:
+        for env_arg in custom_env_args:
+            envs.append(env_arg)
     envs.append('AWS_ACCESS_KEY_ID=' + access_key)
     envs.append('AWS_SECRET_ACCESS_KEY=' + secret_key)
     envs.append('AWS_SESSION_TOKEN=' + session_token)
@@ -126,6 +135,9 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     dns = "--dns {}".format(args.dns) if args.dns else None
     dns_search = "--dns-search {}".format(args.dns_search) if args.dns_search else None
     docker_volume = '-v /var/run/docker.sock:/var/run/docker.sock'
+    additional_volume_mounts = ''
+    for volume in args.volumes:
+        additional_volume_mounts += "-v {}".format(volume)
 
     command = Template(single_line_string("""
         docker run
@@ -133,7 +145,8 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             --name $container_name
             $p
             $env_file
-            $v
+            $default_volume
+            $additional_volumes
             $mount_docker
             $entrypoint
             $dns
@@ -146,7 +159,8 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             'container_name': container_name,
             'p': p,
             'env_file': "--env-file {}".format(env_tmpfile) if env_tmpfile else '',
-            'v': '' if args.no_volume else volume_mount,
+            'default_volume': '' if args.no_volume else volume_mount,
+            'additional_volumes': additional_volume_mounts,
             'mount_docker': docker_volume if args.mount_docker else '',
             'entrypoint': entrypoint,
             'dns': dns or '',
@@ -165,6 +179,9 @@ def parse_args():
                         help='The AWS IAM role name to assume when running this container')
     parser.add_argument('--custom-env-file', default=DEFAULT_CUSTOM_ENV_FILE,
                         help='Optional file that contains environment variables to map into the container.')
+    parser.add_argument('-e', '--envvar', required=False,
+                        action="append", dest="envvars",
+                        help='Equivalent of docker -e, additive with --custom-env-file')
     parser.add_argument('--profile',
                         help='The AWS creds used on your laptop to generate the STS temp credentials')
     parser.add_argument('--host-source-path', default='./src',
@@ -173,6 +190,9 @@ def parse_args():
                         help='The path (absolute) where your source code will be mounted into the container.')
     parser.add_argument('--no-volume', action='store_true', default=False,
                         help='Docker run will mount a volume to your source code path by default, unless this is specified.')
+    parser.add_argument('-v', '--volume', required=False,
+                        action="append", dest="volumes",
+                        help='Passthrough to docker -v, additive with default src/app volume mount')
     parser.add_argument('--mount-docker', action='store_true', default=False,
                         help='Mount the docker sock volume to enable DIND')
     parser.add_argument('--full-entrypoint',
@@ -186,7 +206,7 @@ def parse_args():
     parser.add_argument('--dns-search', required=False,
                         help='Passthrough to docker --dns-search')
     parser.add_argument('-p', '--portmap', required=False,
-                        nargs = '*', dest = "portmaps",
+                        action="append", dest="portmaps",
                         help='Passthrough to docker -p, e.g. 8080:80')
     parser.add_argument('-d', '--detached', default=False,
                         action='store_true', dest="detached",
@@ -245,7 +265,8 @@ def main():
             secret_key,
             session_token,
             region,
-            args.custom_env_file
+            args.custom_env_file,
+            args.envvars
             )
  
     container_name = docker_cli_utils.random_container_name()
