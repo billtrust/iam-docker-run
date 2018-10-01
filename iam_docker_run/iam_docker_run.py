@@ -13,7 +13,7 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.12'
+__version__ = '0.1.13'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -136,8 +136,9 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     dns_search = "--dns-search {}".format(args.dns_search) if args.dns_search else None
     docker_volume = '-v /var/run/docker.sock:/var/run/docker.sock'
     additional_volume_mounts = ''
-    for volume in args.volumes:
-        additional_volume_mounts += "-v {}".format(volume)
+    if args.volumes:
+        for volume in args.volumes:
+            additional_volume_mounts += "-v {}".format(volume)
 
     command = Template(single_line_string("""
         docker run
