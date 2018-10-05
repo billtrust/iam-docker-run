@@ -94,7 +94,7 @@ $ sh get-docker.sh
 
 ### Adding a portmap
 
-This is a direct match to the `docker run -p` argument, for example:
+You can use `--portmap` or `-p`, which is a direct match to the `docker run -p` argument, for example:
 
 ```shell
 $ iam_docker_run \
@@ -115,14 +115,6 @@ $ iam_docker_run \
     -p 8080:80
 ```
 
-### Shell
-
-If you want to debug something in the container, just add a `--shell` argument and it will override the entrypoing with `/bin/bash`.  If you wish to use an alternate shell, you can override this with the following enrivonment variable:
-
-```shell
-$ export IAM_DOCKER_RUN_SHELL_COMMAND="/bin/sh"
-```
-
 ### Full Entrypoint
 
 The Docker syntax for overriding an entrypoint with anything more than one word can seem couterintuitive.  With the Docker syntax, the entrypoint can only be the first command and all arguments to that are separated out on the cmd, so if you want to run `python myapp.py --myarg test123`, then `python` is your entrypoint and the rest go on your cmd, to produce a docker run statement like:
@@ -139,6 +131,24 @@ $ iam-docker-run \
     --full-entrypoint "python myapp.py --myarg test123"
 ```
 
+### Shell
+
+If you want to debug something in the container, just add a `--shell` argument and it will override the entrypoint with `/bin/bash`.  If you wish to use an alternate shell, you can override this with the following enrivonment variable:
+
+```shell
+$ export IAM_DOCKER_RUN_SHELL_COMMAND="/bin/sh"
+```
+
+It is especially convenient to use this command to add to the end of any existing set of arguments.  It will override both the default ENTRYPOINT defined in the Dockerfile as well as the `--full-entrypoint` argument.
+
+```shell
+# for example, --shell will take precedence over --full-entrypoint
+iam-docker-run \
+    --image mycompany/myimage \
+    --full-entrypoint "python myapp.py --myarg test123" \
+    --shell # let me jump in real quick without modifying the rest of my args
+```
+
 ### Custom environment variables file
 
 If you have environment variables you want passed to Docker via `docker run --env-file`, with iam-docker-run you would use `--custom-env-file`.  The reason for this is that iam-docker-run is already using a file to pass into Docker with the environment variables for the AWS temporary credentials, so if you have environment variables to add to that, specify a `--custom-env-file` and that will be concatenated to the env file created by iam-docker-run.
@@ -151,7 +161,7 @@ Additionally you can pass environment variables by `-e` or `--envvar`, which is 
 
 ### Foreground / background
 
-As the main use case is a development workflow, by default the container runs in the foreground.  To run in the background, specify `--detached`, which maps to the `docker run -d` command.
+As the main use case is a development workflow, by default the container runs in the foreground.  To run in the background, specify `--detached`, which maps to the `docker run -d` command.  To interact with the terminal, specify `--interactive`, which maps to `docker run -it`.
 
 ### Region
 
