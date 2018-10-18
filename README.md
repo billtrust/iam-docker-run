@@ -25,10 +25,8 @@ Say you are developing a console application using AWS resources and are in your
 ```shell
 $ iam-docker-run \
     --image mycompany/myservice:latest \
-    --aws-role-name role-myservice-task
+    --role role-myservice-task
 ```
-
-There are lots of defaults at play here to keep command line usage succinct to support a convenient development workflow, which is the primary use case.  It is helpful to understand these defaults.  Most notably, it mounts a volume to insert the source code on your laptop into the container.  It assumes a project directory structure where your source code is located relative as `./src`, and that you want it mounted into the container to `/app`.  To disable this automatic volume mount, you must specify `--no-volume`.
 
 ## Specifying a local AWS profile
 
@@ -39,81 +37,6 @@ You will likely need to add a `--profile myprofile` argument to each of these ex
 ### Full argument list
 
 For a full list of arguments, run `iam-docker-run -h`.
-
-### Overriding the volume mount
-
-If your local source code path, or the path to mount it inside the container differs from the `./src` and `/app` defaults, you can override this in two different ways.
-
-#### Overriding volume mount by environment variables
-
-You can use system environment variables to override this which shortens your command and is convenient if you have the same directory structure throughout your projects.  You can override one or both of these.
-
-Relative paths are okay.
-
-```shell
-$ export IAM_DOCKER_RUN_HOST_SOURCE_PATH="./mysource"
-$ export IAM_DOCKER_RUN_CONTAINER_SOURCE_PATH="/myapp"
-$ iam-docker-run \
-    --image mycompany/myservice \
-    --aws-role-name role-myservice-task
-```
-
-#### Overriding volume mount by arguments
-
-An equivalent way using arguments is:
-
-```shell
-$ iam-docker-run \
-    --image mycompany/myservice \
-    --aws-role-name role-myservice-task \
-    --host-source-path ./mysource \
-    --container-source-path /myapp
-```
-
-#### Preventing the default volume mount
-
-If you want to prevent it from mounting the default volume (if say you are using this from Jenkins, etc.) then you can add `--no-volume`.
-
-#### Additional volume mounts
-
-You can mount additional volumes by `-v` or `--volume`, which is passthrough to the `docker -v` argument.  These are additive with the default volume mount (unless `--no-volume` is specified) and the docker in docker mount.
-
-#### Overcoming SELinux with volume mounts
-
-If you are running SELinux and experience permission denied issues when mounting volumes, specify the `--selinux` argument, which will alter the dockr run volume mount argument so that the volume is readable.
-
-#### Enable Docker in Docker'
-
-If you want to enable Docker in Docker, you can mount the Docker socket by adding the `--mount-docker` argument.  If you then install Docker in the container with the below script and use the Docker CLI from within the container.
-
-```shell
-# install the docker client
-$ curl -fsSL get.docker.com -o get-docker.sh
-$ sh get-docker.sh
-```
-
-### Adding a portmap
-
-You can use `--portmap` or `-p`, which is a direct match to the `docker run -p` argument, for example:
-
-```shell
-$ iam-docker-run \
-    --image mycompany/myservice \
-    --aws-role-name role-myservice-task \
-    --portmap 30000:3000
-```
-
-The `--portmap 30000:3000` argument in this example would take a HTTP server listening in the container on port 3000 and maps it to port 30000 on your laptop.
-
-Note that you can use multiple portmaps as follows:
-
-```shell
-$ iam-docker-run \
-    --image mycompany/myservice \
-    --aws-role-name role-myservice-task \
-    -p 4430:443 \
-    -p 8080:80
-```
 
 ### Full Entrypoint
 
@@ -163,11 +86,64 @@ Additionally you can pass environment variables by `-e` or `--envvar`, which is 
 
 As the main use case is a development workflow, by default the container runs in the foreground.  To run in the background, specify `--detached`, which maps to the `docker run -d` command.  To interact with the terminal, specify `--interactive`, which maps to `docker run -it`.
 
+### Source code volume mount by arguments (developer workflow)
+
+The `--host-source-path` and `--container-source-path` arguments are designed to make it easy to mount your source code into the container when using Docker in a developer workflow where you make changes in your IDE on your host computer and want that source code immediately inserted into the container.  The `--host-source-path` argument can be relative.  In prior versions of IAM-Docker-Run the source code mount was automatic and required the `--no-volume` argument to prevent mounting it.  This automatic mount behavior has been removed however these arguments will remain for backward compatibility.
+
+```shell
+$ iam-docker-run \
+    --image mycompany/myservice \
+    --role role-myservice-task \
+    --host-source-path ./mysource \
+    --container-source-path /myapp
+```
+
+### Additional volume mounts
+
+You can mount additional volumes by `-v` or `--volume`, which is passthrough to the `docker -v` argument.  These are additive with the source code volume mount (if specified) and the docker in docker mount.
+
+### Overcoming SELinux with volume mounts
+
+If you are running SELinux and experience permission denied issues when mounting volumes, specify the `--selinux` argument, which will alter the dockr run volume mount argument so that the volume is readable.
+
+### Enable Docker in Docker
+
+If you want to enable Docker in Docker, you can mount the Docker socket by adding the `--mount-docker` argument.  If you then install Docker in the container with the below script and use the Docker CLI from within the container.
+
+```shell
+# install the docker client
+$ curl -fsSL get.docker.com -o get-docker.sh
+$ sh get-docker.sh
+```
+
+### Adding a portmap
+
+You can use `--portmap` or `-p`, which is a direct match to the `docker run -p` argument, for example:
+
+```shell
+$ iam-docker-run \
+    --image mycompany/myservice \
+    --role role-myservice-task \
+    --portmap 30000:3000
+```
+
+The `--portmap 30000:3000` argument in this example would take a HTTP server listening in the container on port 3000 and maps it to port 30000 on your laptop.
+
+Note that you can use multiple portmaps as follows:
+
+```shell
+$ iam-docker-run \
+    --image mycompany/myservice \
+    --role role-myservice-task \
+    -p 4430:443 \
+    -p 8080:80
+```
+
 ### Region
 
 If `--region` is provided that will take precidence, otherwise iam-docker-run will look for your region in AWS_REGION or AWS_DEFAULT_REGION environment variables.  If none are provided it will default to us-east-1.
 
-### Container Name Tempfile
+## Container Name Tempfile
 
 IAM-Docker-Run generates a random container name.  If this container name is needed for anything downstream such as the code debugging inside the container feature of VSCode, the container name needs to be discoverable.  IAM-Docker-Run enables this by generating a file which contains the name of the container and writes it in a pre-determined location.
 
@@ -185,12 +161,12 @@ Or you can disable this entirely by setting:
 $ export IAM_DOCKER_RUN_DISABLE_CONTAINER_NAME_TEMPFILE=true
 ```
 
-### Shortcut
+## Shortcut
 
 An alternate way to invoke iam-docker-run on the command line is to use the alias `idr`.  Just less typing.
 
 ```shell
-$ idr --image busybox --aws-role-name myrole
+$ idr --image busybox --role myrole
 ```
 
 ## Example CI workflow
@@ -200,9 +176,8 @@ The second use case for iam-docker-run is for running tests from continuous inte
 ```shell
 $ iam-docker-run \
     --image mycompany/myimage \
-    --aws-role-name role-myservice-task \
+    --role role-myservice-task \
     --full-entrypoint "/bin/bash /tests/run-integration-test.sh" \
-    --no-volume \
     --profile jenkins
 ```
 
@@ -214,13 +189,15 @@ To turn on verbose output for debugging, set the `--verbose` argument.
 
 A goal of this project was to be as easy as possible for developers to use and to allow the greatest portability.  To that end, the temporary AWS credentials are generated just once before the container starts, rather than requiring a more complex setup where an additional container would run all the time and regenerate credentials.  When the temp credentials expire (the STS max of 1 hour), the application will start experiencing expired credential exceptions.  For this among other reasons is why you would not use this tool in any environment other than local development or in your build/CI/CD workflow where usage periods are short and the container can be restarted easily and often.
 
+Note: While the STS temporary credentials maximum was recently raised to 12 hours, if you are already in the context of an IAM role which is then assuming another role, the limit in this case remains to be 1 hour.
+
 ## Publishing Updates to PyPi
 
 For the maintainer - to publish an updated version of Iam-Docker-Run, increment the version number in iam_docker_run.py and run the following:
 
 ```shell
 docker build -f ./Dockerfile.buildenv -t billtrust/iam-docker-run:build .
-docker run --rm -it --entrypoint python billtrust/iam-docker-run:build setup.py publish
+docker run --rm -it --entrypoint make billtrust/iam-docker-run:build publish
 ```
 
 At the prompts, enter the username and password to the Billtrust pypi.org repo.

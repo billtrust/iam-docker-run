@@ -13,7 +13,6 @@ from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
 
-__version__ = '0.1.13'
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
@@ -109,29 +108,14 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     if not os.path.exists(env_tmpfile):
         env_tmpfile = None
 
-    if os.environ.get('IAM_DOCKER_RUN_HOST_SOURCE_PATH', None):
-        if args.host_source_path != os.environ['IAM_DOCKER_RUN_HOST_SOURCE_PATH']:
-            print('WARNING: --host-source-path argument and IAM_DOCKER_RUN_HOST_SOURCE_PATH are in conflict, preferring argument.')
-            host_source_path = args.host_source_path
-        else:
-            host_source_path = os.environ['IAM_DOCKER_RUN_HOST_SOURCE_PATH']
-    else:
-        host_source_path = args.host_source_path
-    host_source_path = os.path.abspath(host_source_path)
-    if os.environ.get('IAM_DOCKER_RUN_CONTAINER_SOURCE_PATH', None):
-        if args.container_source_path != os.environ['IAM_DOCKER_RUN_CONTAINER_SOURCE_PATH']:
-            print('WARNING: --host-source-path argument and IAM_DOCKER_RUN_CONTAINER_SOURCE_PATH are in conflict, preferring argument.')
-            container_source_path = args.container_source_path
-        else:
-            container_source_path = os.environ['IAM_DOCKER_RUN_CONTAINER_SOURCE_PATH']
-    else:
-        container_source_path = args.container_source_path
-    volume_mount = '-v {}:{}'.format(
-        host_source_path,
-        container_source_path)
+    sourcecode_volume_mount = None
+    if args.host_source_path and args.container_source_path:
+        sourcecode_volume_mount = '-v {}:{}'.format(
+            os.path.abspath(args.host_source_path),
+            args.container_source_path)
     # http://www.projectatomic.io/blog/2015/06/using-volumes-with-docker-can-cause-problems-with-selinux/
     if args.selinux:
-        volume_mount += ':Z'
+        sourcecode_volume_mount += ':Z'
     dns = "--dns {}".format(args.dns) if args.dns else None
     dns_search = "--dns-search {}".format(args.dns_search) if args.dns_search else None
     docker_volume = '-v /var/run/docker.sock:/var/run/docker.sock'
@@ -146,7 +130,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             --name $container_name
             $p
             $env_file
-            $default_volume
+            $sourcecode_volume
             $additional_volumes
             $mount_docker
             $entrypoint
@@ -160,7 +144,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             'container_name': container_name,
             'p': p,
             'env_file': "--env-file {}".format(env_tmpfile) if env_tmpfile else '',
-            'default_volume': '' if args.no_volume else volume_mount,
+            'sourcecode_volume': sourcecode_volume_mount if sourcecode_volume_mount else '',
             'additional_volumes': additional_volume_mounts,
             'mount_docker': docker_volume if args.mount_docker else '',
             'entrypoint': entrypoint,
@@ -172,11 +156,11 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     return command
 
 
-def parse_args():
+def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', required=True,
                         help='The full name of the docker repo/image')
-    parser.add_argument('--aws-role-name',
+    parser.add_argument('--role', '--aws-role-name', dest='aws_role_name',
                         help='The AWS IAM role name to assume when running this container')
     parser.add_argument('--custom-env-file', default=DEFAULT_CUSTOM_ENV_FILE,
                         help='Optional file that contains environment variables to map into the container.')
@@ -185,17 +169,19 @@ def parse_args():
                         help='Equivalent of docker -e, additive with --custom-env-file')
     parser.add_argument('--profile',
                         help='The AWS creds used on your laptop to generate the STS temp credentials')
-    parser.add_argument('--host-source-path', default='./src',
+    parser.add_argument('--host-source-path', required=False,
                         help='The path (can be relative) to your source code from your laptop to mount into the container.')
-    parser.add_argument('--container-source-path', default='/app',
+    parser.add_argument('--container-source-path', required=False,
                         help='The path (absolute) where your source code will be mounted into the container.')
-    parser.add_argument('--no-volume', action='store_true', default=False,
-                        help='Docker run will mount a volume to your source code path by default, unless this is specified.')
+    parser.add_argument('--selinux', action='store_true', default=False,
+                        help='Work around SELinux volume mount issues for source code volume')
     parser.add_argument('-v', '--volume', required=False,
                         action="append", dest="volumes",
                         help='Passthrough to docker -v, additive with default src/app volume mount')
     parser.add_argument('--mount-docker', action='store_true', default=False,
                         help='Mount the docker sock volume to enable DIND')
+    parser.add_argument('--no-volume', action='store_true', default=False,
+                        help='Deprecated, there is no longer any default volume mount to suppress')
     parser.add_argument('--full-entrypoint',
                         help='The full entrypoint to override, multiple words are okay')
     parser.add_argument('--entrypoint', required=False,
@@ -215,19 +201,21 @@ def parse_args():
     parser.add_argument('--interactive', action='store_true', default=False,
                         help='Run Docker in interactive terminal mode (-it)')
     parser.add_argument('--shell', action='store_true', default=False)
-    parser.add_argument('--selinux', action='store_true', default=False,
-                        help='Work around SELinux volume mount issues')
     parser.add_argument('--region', required=False)
     parser.add_argument('--verbose', action='store_true', default=False)
-
-    args = parser.parse_args()
-    return args
+    return parser
 
 
 def main():
-    print('IAM-Docker-Run version {}'.format(__version__))
+    here = os.path.abspath(os.path.dirname(__file__))
+    about = {}
+    with open(os.path.join(here, 'version.py'), 'r') as f:
+        exec(f.read(), about)
 
-    args = parse_args()
+    print('IAM-Docker-Run version {}'.format(about['__version__']))
+
+    parser = create_parser()
+    args = parser.parse_args()
 
     if args.verbose:
         global VERBOSE_MODE
@@ -236,6 +224,9 @@ def main():
     region = args.region or \
              os.environ.get('AWS_REGION',
              os.environ.get('AWS_DEFAULT_REGION', 'us-east-1'))
+
+    if args.no_volume:
+        print("WARNING: --no-volume is deprecated, there is no longer any default volume mount")
 
     env_tmpfile = ''
     if args.aws_role_name:
