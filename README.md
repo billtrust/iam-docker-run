@@ -23,7 +23,7 @@ $ pip install iam-docker-run
 Say you are developing a console application using AWS resources and are in your project's root directory and want to execute your application using your latest source code and the IAM role created for your project.
 
 ```shell
-$ iam_docker_run \
+$ iam-docker-run \
     --image mycompany/myservice:latest \
     --aws-role-name role-myservice-task
 ```
@@ -53,7 +53,7 @@ Relative paths are okay.
 ```shell
 $ export IAM_DOCKER_RUN_HOST_SOURCE_PATH="./mysource"
 $ export IAM_DOCKER_RUN_CONTAINER_SOURCE_PATH="/myapp"
-$ iam_docker_run \
+$ iam-docker-run \
     --image mycompany/myservice \
     --aws-role-name role-myservice-task
 ```
@@ -63,7 +63,7 @@ $ iam_docker_run \
 An equivalent way using arguments is:
 
 ```shell
-$ iam_docker_run \
+$ iam-docker-run \
     --image mycompany/myservice \
     --aws-role-name role-myservice-task \
     --host-source-path ./mysource \
@@ -97,7 +97,7 @@ $ sh get-docker.sh
 You can use `--portmap` or `-p`, which is a direct match to the `docker run -p` argument, for example:
 
 ```shell
-$ iam_docker_run \
+$ iam-docker-run \
     --image mycompany/myservice \
     --aws-role-name role-myservice-task \
     --portmap 30000:3000
@@ -108,7 +108,7 @@ The `--portmap 30000:3000` argument in this example would take a HTTP server lis
 Note that you can use multiple portmaps as follows:
 
 ```shell
-$ iam_docker_run \
+$ iam-docker-run \
     --image mycompany/myservice \
     --aws-role-name role-myservice-task \
     -p 4430:443 \
