@@ -2,3 +2,5 @@ dist/
 build/
 *.pyc
 *.egg-info/
+test-output/
+test-input/

@@ -12,6 +12,8 @@ IAM-Docker-Run generates AWS temporary credentials and builds a lengthly `docker
 
 **This is a development workflow tool, not designed to run production containers.**
 
+A related effort is [IAM-Starter](https://github.com/billtrust/iam-starter) which starts a local process (outside of Docker) in the context of an AWS IAM role.
+
 ## Installation
 
 ```shell
@@ -30,7 +32,7 @@ $ iam-docker-run \
 
 ## Specifying a local AWS profile
 
-You will likely need to add a `--profile myprofile` argument to each of these examples.  This is the AWS profile used to assume the role, so it needs to have access to assume the role.  If absent, by default it will use the default AWS profile.  This profile would have been created with `aws configure`.  More likely you would have a named role which you would configure with `aws configure --profile myuser` and then add the `--profile myser` argument to each of your calls.
+You will likely need to add a `--profile myprofile` argument to each of these examples.  This is the AWS profile used to assume the role, so it needs to have access to assume the role.  If absent, by default it will use the default AWS profile.  This profile would have been created with `aws configure`.  More likely you would have a named role which you would configure with `aws configure --profile myuser` and then add the `--profile myprofile` argument to each of your calls.
 
 ## Arguments and More Examples
 
@@ -190,6 +192,19 @@ To turn on verbose output for debugging, set the `--verbose` argument.
 A goal of this project was to be as easy as possible for developers to use and to allow the greatest portability.  To that end, the temporary AWS credentials are generated just once before the container starts, rather than requiring a more complex setup where an additional container would run all the time and regenerate credentials.  When the temp credentials expire (the STS max of 1 hour), the application will start experiencing expired credential exceptions.  For this among other reasons is why you would not use this tool in any environment other than local development or in your build/CI/CD workflow where usage periods are short and the container can be restarted easily and often.
 
 Note: While the STS temporary credentials maximum was recently raised to 12 hours, if you are already in the context of an IAM role which is then assuming another role, the limit in this case remains to be 1 hour.
+
+## Testing
+
+```shell
+$ python setup.py install --user
+# pip install nose iam-starter
+$ export AWS_REGION=us-east-1
+$ export AWS_PROFILE=dev
+$ iam-starter \
+    --role role-developers \
+    --profile $AWS_PROFILE \
+    --command nosetests -v --exe -w ./test
+```
 
 ## Publishing Updates to PyPi
 

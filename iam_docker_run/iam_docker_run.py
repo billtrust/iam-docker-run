@@ -136,6 +136,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             $entrypoint
             $dns
             $dns_search
+            $network
             $image
             $cmd
         """)) \
@@ -150,6 +151,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             'entrypoint': entrypoint,
             'dns': dns or '',
             'dns_search': dns_search or '',
+            'network': "--network {}".format(args.network) if args.network else '',
             'image': args.image,
             'cmd': cmd
         })
@@ -195,6 +197,8 @@ def create_parser():
     parser.add_argument('-p', '--portmap', required=False,
                         action="append", dest="portmaps",
                         help='Passthrough to docker -p, e.g. 8080:80')
+    parser.add_argument('--network', required=False,
+                        help='Passthrough to docker --network argument')
     parser.add_argument('-d', '--detached', default=False,
                         action='store_true', dest="detached",
                         help='Run Docker in detached mode')
