@@ -166,3 +166,15 @@ class TestIamDockerRun(unittest.TestCase):
         env = TestFileEnvironment('./test-output')
         result = env.run(' '.join(command))
         assert 'MyTestEnvArg' in result.stdout
+
+
+    def test_envvar_arguments_without_role(self):
+        command = [
+            'iam-docker-run',
+            '-e TESTENVARG=MyTestEnvArg',
+            '--image mesosphere/aws-cli:latest',
+            "--full-entrypoint \"printenv TESTENVARG\""
+        ]
+        env = TestFileEnvironment('./test-output')
+        result = env.run(' '.join(command))
+        assert 'MyTestEnvArg' in result.stdout

@@ -195,6 +195,8 @@ Note: While the STS temporary credentials maximum was recently raised to 12 hour
 
 ## Testing
 
+The following test instructions require iam-starter.  Install via `pip install iam-starter`.
+
 ```shell
 $ python setup.py install --user
 # pip install nose iam-starter

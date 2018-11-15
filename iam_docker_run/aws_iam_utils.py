@@ -46,8 +46,10 @@ def generate_aws_temp_creds(role_name, profile=None):
     sts_client = session.client('sts')
     iam_client = session.client('iam')
 
+    aws_config = {}
+
     try:
-        role_arn = iam_client.get_role(RoleName=role_name)['Role']['Arn']
+        aws_config['role_arn'] = iam_client.get_role(RoleName=role_name)['Role']['Arn']
     except ClientError as e:
         if e.response['Error']['Code'] == 'NoSuchEntity':
             method = get_credential_method_description(session)
@@ -60,14 +62,14 @@ def generate_aws_temp_creds(role_name, profile=None):
     try:
         random_session = uuid.uuid4().hex
         assumed_role_object = sts_client.assume_role(
-            RoleArn=role_arn,
+            RoleArn=aws_config['role_arn'],
             RoleSessionName="docker-session-{}".format(random_session),
             DurationSeconds=3600  # 1 hour max
         )
-        access_key = assumed_role_object["Credentials"]["AccessKeyId"]
-        secret_key = assumed_role_object["Credentials"]["SecretAccessKey"]
-        session_token = assumed_role_object["Credentials"]["SessionToken"]
+        aws_config['access_key'] = assumed_role_object["Credentials"]["AccessKeyId"]
+        aws_config['secret_key'] = assumed_role_object["Credentials"]["SecretAccessKey"]
+        aws_config['session_token'] = assumed_role_object["Credentials"]["SessionToken"]
     except Exception as e:
-        raise AwsUtilError("Error assuming role {}: {}".format(role_arn, e))
+        raise AwsUtilError("Error assuming role {}: {}".format(aws_config['role_arn'], e))
 
-    return access_key, secret_key, session_token, role_arn
+    return aws_config

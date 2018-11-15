@@ -29,10 +29,7 @@ def single_line_string(string):
 
 
 def generate_temp_env_file(
-    access_key,
-    secret_key,
-    session_token,
-    region,
+    aws_config,
     custom_env_file,
     custom_env_args):
     """Write out a file with the environment variables for the AWS credentials which can be passed
@@ -57,11 +54,12 @@ def generate_temp_env_file(
     if custom_env_args:
         for env_arg in custom_env_args:
             envs.append(env_arg)
-    envs.append('AWS_ACCESS_KEY_ID=' + access_key)
-    envs.append('AWS_SECRET_ACCESS_KEY=' + secret_key)
-    envs.append('AWS_SESSION_TOKEN=' + session_token)
-    envs.append('AWS_DEFAULT_REGION=' + region)
-    envs.append('AWS_REGION=' + region)
+    if aws_config:
+        envs.append('AWS_ACCESS_KEY_ID=' + aws_config['access_key'])
+        envs.append('AWS_SECRET_ACCESS_KEY=' + aws_config['secret_key'])
+        envs.append('AWS_SESSION_TOKEN=' + aws_config['session_token'])
+        envs.append('AWS_DEFAULT_REGION=' + aws_config['region'])
+        envs.append('AWS_REGION=' + aws_config['region'])
     # ensure stdout flows to docker unbuffered
     envs.append('PYTHONUNBUFFERED=1')
 
@@ -225,21 +223,21 @@ def main():
         global VERBOSE_MODE
         VERBOSE_MODE = True
 
-    region = args.region or \
-             os.environ.get('AWS_REGION',
-             os.environ.get('AWS_DEFAULT_REGION', 'us-east-1'))
 
     if args.no_volume:
         print("WARNING: --no-volume is deprecated, there is no longer any default volume mount")
 
     env_tmpfile = ''
+    aws_config = {}
     if args.aws_role_name:
         try:
-            access_key, secret_key, session_token, role_arn = \
-                aws_iam_utils.generate_aws_temp_creds(args.aws_role_name, args.profile)
+            aws_config = aws_iam_utils.generate_aws_temp_creds(
+                args.aws_role_name,
+                args.profile
+            )
             if VERBOSE_MODE:
-                print("Role arn: {}".format(role_arn))
-            print("Generated temporary AWS credentials: {}".format(access_key))
+                print("Role arn: {}".format(aws_config['role_arn']))
+            print("Generated temporary AWS credentials: {}".format(aws_config['access_key']))
         except RoleNotFoundError as e:
             if VERBOSE_MODE:
                 print(str(e))
@@ -252,18 +250,20 @@ def main():
             print("IAM role '{}' not found in account id {}, credential method: {}".format(
                 args.aws_role_name,
                 account_id,
-                e.credential_method
-            ))
+                e.credential_method))
             sys.exit(1)
+        aws_config['region'] = args.region or \
+             os.environ.get('AWS_REGION',
+             os.environ.get('AWS_DEFAULT_REGION', None))
+        if not aws_config['region']:
+            aws_config['region'] = 'us-east-1'
+            print("No AWS region specified or in environment, defaulting to {}".format(
+                aws_config['region']))
 
-        env_tmpfile = generate_temp_env_file(
-            access_key,
-            secret_key,
-            session_token,
-            region,
-            args.custom_env_file,
-            args.envvars
-            )
+    env_tmpfile = generate_temp_env_file(
+        aws_config,
+        args.custom_env_file,
+        args.envvars)
  
     container_name = docker_cli_utils.random_container_name()
     if os.environ.get('IAM_DOCKER_RUN_DISABLE_CONTAINER_NAME_TEMPFILE', None):
