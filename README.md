@@ -198,8 +198,8 @@ Note: While the STS temporary credentials maximum was recently raised to 12 hour
 The following test instructions require iam-starter.  Install via `pip install iam-starter`.
 
 ```shell
+$ pip install --user nose iam-starter scripttest
 $ python setup.py install --user
-# pip install nose iam-starter
 $ export AWS_REGION=us-east-1
 $ export AWS_PROFILE=dev
 $ iam-starter \
