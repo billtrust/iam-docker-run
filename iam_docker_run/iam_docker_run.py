@@ -12,6 +12,9 @@ from . import docker_cli_utils
 from . import shell_utils
 from .aws_util_exceptions import RoleNotFoundError
 from .docker_cli_utils import DockerCliUtilError
+from .aws_util_exceptions import ProfileParsingError
+from .aws_util_exceptions import RoleNotFoundError
+from .aws_util_exceptions import AssumeRoleError
 
 
 DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
@@ -71,18 +74,8 @@ def get_aws_creds(profile_name=None, role_name=None, verbose=False):
     return aws_creds
 
 
-def single_line_string(string):
-    # replace all runs of whitespace to a single space
-    string = re.sub('\s+', ' ', string)
-    # remove newlines
-    string = string.replace('\n', '')
-    # remove leading/trailing whitespace
-    string = string.strip()
-    return string
-
-
 def generate_temp_env_file(
-    aws_config,
+    aws_creds,
     region,
     custom_env_file,
     custom_env_args):
@@ -108,12 +101,14 @@ def generate_temp_env_file(
     if custom_env_args:
         for env_arg in custom_env_args:
             envs.append(env_arg)
-    if aws_config:
-        envs.append('AWS_ACCESS_KEY_ID=' + aws_config['AWS_ACCESS_KEY_ID'])
-        envs.append('AWS_SECRET_ACCESS_KEY=' + aws_config['AWS_SECRET_ACCESS_KEY'])
-        envs.append('AWS_SESSION_TOKEN=' + aws_config['AWS_SESSION_TOKEN'])
-        envs.append('AWS_DEFAULT_REGION=' + region)
-        envs.append('AWS_REGION=' + region)
+    if aws_creds:
+        envs.append('AWS_ACCESS_KEY_ID=' + aws_creds['AWS_ACCESS_KEY_ID'])
+        envs.append('AWS_SECRET_ACCESS_KEY=' + aws_creds['AWS_SECRET_ACCESS_KEY'])
+        if 'AWS_SESSION_TOKEN' in aws_creds:
+            envs.append('AWS_SESSION_TOKEN=' + aws_creds['AWS_SESSION_TOKEN'])
+        if region:
+            envs.append('AWS_DEFAULT_REGION=' + region)
+            envs.append('AWS_REGION=' + region)
     # ensure stdout flows to docker unbuffered
     envs.append('PYTHONUNBUFFERED=1')
 
@@ -127,6 +122,16 @@ def generate_temp_env_file(
         print("Error writing temp env file: {}".format(str(e)))
         raise
     return temp_env_file.name
+
+
+def single_line_string(string):
+    # replace all runs of whitespace to a single space
+    string = re.sub('\s+', ' ', string)
+    # remove newlines
+    string = string.replace('\n', '')
+    # remove leading/trailing whitespace
+    string = string.strip()
+    return string
 
 
 def build_docker_run_command(args, container_name, env_tmpfile):
@@ -214,15 +219,15 @@ def create_parser():
     parser = argparse.ArgumentParser()
     parser.add_argument('--image', required=True,
                         help='The full name of the docker repo/image')
-    parser.add_argument('--role', '--aws-role-name', dest='aws_role_name',
+    parser.add_argument('--role', '--aws-role-name', dest='role',
                         help='The AWS IAM role name to assume when running this container')
+    parser.add_argument('--profile',
+                        help='The AWS creds used on your laptop to generate the STS temp credentials')
     parser.add_argument('--custom-env-file', default=DEFAULT_CUSTOM_ENV_FILE,
                         help='Optional file that contains environment variables to map into the container.')
     parser.add_argument('-e', '--envvar', required=False,
                         action="append", dest="envvars",
                         help='Equivalent of docker -e, additive with --custom-env-file')
-    parser.add_argument('--profile',
-                        help='The AWS creds used on your laptop to generate the STS temp credentials')
     parser.add_argument('--host-source-path', required=False,
                         help='The path (can be relative) to your source code from your laptop to mount into the container.')
     parser.add_argument('--container-source-path', required=False,
@@ -277,6 +282,11 @@ def main():
         global VERBOSE_MODE
         VERBOSE_MODE = True
 
+    # if not args.profile and not args.role:
+    #     parser.print_help()
+    #     print('You must specify --profile and/or --role')
+    #     sys.exit(1)
+
     region = args.region or \
              os.environ.get('AWS_REGION',
              os.environ.get('AWS_DEFAULT_REGION', None))
@@ -286,17 +296,16 @@ def main():
         print("WARNING: --no-volume is deprecated, there is no longer any default volume mount")
 
     env_tmpfile = ''
-    aws_config = {}
-    if args.aws_role_name:
+    aws_creds = {}
+    if not args.profile and not args.role:
+        print('WARNING: No profile or role specified')
+    else:
         try:
-            aws_config = get_aws_creds(args.profile, args.aws_role_name, verbose=True)
-            # aws_config = aws_iam_utils.ZZZZ (
-            #     args.aws_role_name,
-            #     args.profile
-            # )
-            # if VERBOSE_MODE:
-            #     print("Role arn: {}".format(aws_config['role_arn']))
-            print("Generated temporary AWS credentials: {}".format(aws_config['AWS_ACCESS_KEY_ID']))
+            aws_creds = get_aws_creds(args.profile, args.role, verbose=True)
+            print("Generated temporary AWS credentials: {}".format(aws_creds['AWS_ACCESS_KEY_ID']))
+        except ProfileParsingError as e:
+            print(e)
+            sys.exit(1)
         except RoleNotFoundError as e:
             if VERBOSE_MODE:
                 print(str(e))
@@ -307,20 +316,30 @@ def main():
                     print("Error retrieving AWS Account ID: {}".format(str(e)))
                 account_id = 'error'
             print("IAM role '{}' not found in account id {}, credential method: {}".format(
-                args.aws_role_name,
+                args.role,
                 account_id,
                 e.credential_method))
             sys.exit(1)
-        # aws_config['region'] = args.region or \
-        #      os.environ.get('AWS_REGION',
-        #      os.environ.get('AWS_DEFAULT_REGION', None))
-        # if not aws_config['region']:
-        #     aws_config['region'] = 'us-east-1'
-        #     print("No AWS region specified or in environment, defaulting to {}".format(
-        #         aws_config['region']))
+        except AssumeRoleError as e:
+            if args.verbose:
+                print(str(e))
+            try:
+                account_id = aws_iam_utils.get_aws_account_id(args.profile)
+            except Exception as e:
+                if args.verbose:
+                    print("Error retrieving AWS Account ID: {}".format(str(e)))
+                account_id = 'error'
+            credential_method = e.credential_method if hasattr(e, 'credential_method') else '(unknown)'
+            print("Error assuming IAM role '{}' from account id {}, credential method: {}, error: {}".format(
+                args.role,
+                account_id,
+                credential_method,
+                e
+            ))
+            sys.exit(1)
 
     env_tmpfile = generate_temp_env_file(
-        aws_config,
+        aws_creds,
         region,
         args.custom_env_file,
         args.envvars)

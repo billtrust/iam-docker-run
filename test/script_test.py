@@ -119,7 +119,7 @@ class TestIamDockerRun(unittest.TestCase):
 # Tests
 #
 
-    def test_correctly_assumes_iam_context(self):
+    def test_correctly_assumes_role_with_profile(self):
         awscli_command = "aws ssm get-parameter --name {}TEST --query 'Parameter.Value' --output text".format(self._ssm_path)
         command = [
             'iam-docker-run',
@@ -131,6 +131,37 @@ class TestIamDockerRun(unittest.TestCase):
         env = TestFileEnvironment('./test-output')
         result = env.run(' '.join(command))
         assert 'Used for integration testing' in result.stdout
+
+
+    def test_correctly_assumes_profile_without_role(self):
+        awscli_command = "aws ssm get-parameter --name {}TEST --query 'Parameter.Value' --output text".format(self._ssm_path)
+        command = [
+            'iam-docker-run',
+            '--profile {}'.format(self._profile),
+            '--image mesosphere/aws-cli:latest',
+            "--full-entrypoint \"{}\"".format(awscli_command)
+        ]
+        env = TestFileEnvironment('./test-output')
+        result = env.run(' '.join(command))
+        assert 'Used for integration testing' in result.stdout
+
+
+    # todo
+    # def test_correctly_assumes_role_without_profile(self):
+    #     pass
+
+    def test_fails_to_assume_role_without_profile_and_local_env_creds(self):
+        awscli_command = "aws ssm get-parameter --name {}TEST --query 'Parameter.Value' --output text".format(self._ssm_path)
+        command = [
+            'iam-docker-run',
+            '--role {}'.format(self._role_name),
+            '--image mesosphere/aws-cli:latest',
+            "--full-entrypoint \"{}\"".format(awscli_command)
+        ]
+        env = TestFileEnvironment('./test-output')
+        result = env.run(' '.join(command), expect_error=True)
+        assert not 'Used for integration testing' in result.stdout
+        assert 'no AWS credentials found in the environment' in result.stdout
 
 
     def test_volume_mounts(self):

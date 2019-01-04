@@ -30,9 +30,22 @@ $ iam-docker-run \
     --role role-myservice-task
 ```
 
-## Specifying a local AWS profile
+You can alternatively specify a local AWS profile, then the container will run with the credentials given by that role.  This profile would have to exist locally in your `~/.aws/config` file, which can be created with `aws configure --profile myprofile`.
 
-You will likely need to add a `--profile myprofile` argument to each of these examples.  This is the AWS profile used to assume the role, so it needs to have access to assume the role.  If absent, by default it will use the default AWS profile.  This profile would have been created with `aws configure`.  More likely you would have a named role which you would configure with `aws configure --profile myuser` and then add the `--profile myprofile` argument to each of your calls.
+```shell
+$ iam-docker-run \
+    --image mycompany/myservice:latest \
+    --profile myprofile
+```
+
+Or you can specify a role and a profile.  In this case the profile provides the credentials necessary to assume the role.
+
+```shell
+$ iam-docker-run \
+    --image mycompany/myservice:latest \
+    --role role-myservice-task \
+    --profile myprofile
+```
 
 ## Arguments and More Examples
 
@@ -195,17 +208,41 @@ Note: While the STS temporary credentials maximum was recently raised to 12 hour
 
 ## Testing
 
-The following test instructions require iam-starter.  Install via `pip install iam-starter`.
+Run the automated script cli tests:
 
 ```shell
-$ pip install --user nose iam-starter scripttest
-$ python setup.py install --user
-$ export AWS_REGION=us-east-1
-$ export AWS_PROFILE=dev
-$ iam-starter \
-    --role role-developers \
-    --profile $AWS_PROFILE \
-    --command nosetests -v --exe -w ./test
+pip install --user nose scripttest
+python setup.py install --user
+export AWS_REGION=us-east-1
+# set AWS_PROFILE to a valid profile name which can assume roles
+export AWS_PROFILE=dev
+nosetests -v --exe -w ./test
+```
+
+Testing the use case of a role being supplied without a profile, using the credentials in the environment, is difficult to test an a generic automated way.  For now, the following manual steps can test this condition.
+
+```shell
+# set ROLE_ARN_FOR_LOCAL_CREDS to a role which can list s3 buckets
+export ROLE_ARN_FOR_LOCAL_CREDS=arn:aws:iam::123456789012:role/my-role
+# set AWS_PROFILE to a valid profile name which can assume the ROLE_ARN
+export AWS_PROFILE=dev
+export ROLE_NAME_FOR_CONTAINER=role-ops-developers
+
+aws sts assume-role \
+    --role-arn $ROLE_ARN_FOR_LOCAL_CREDS \
+    --role-session-name testing \
+    --profile $AWS_PROFILE
+
+# put credentials in the environment
+export AWS_ACCESS_KEY_ID=fromabove
+export AWS_SECRET_ACCESS_KEY=fromabove
+export AWS_SESSION_TOKEN=fromabove
+
+iam-docker-run \
+    --role $ROLE_NAME_FOR_CONTAINER \
+    --image mesosphere/aws-cli:latest --full-entrypoint "aws s3 ls"
+
+# command should succeed with a listing of s3 buckets
 ```
 
 ## Publishing Updates to PyPi
