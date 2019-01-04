@@ -18,6 +18,59 @@ DEFAULT_CUSTOM_ENV_FILE = 'iam-docker-run.env'
 VERBOSE_MODE = False
 
 
+def get_aws_creds(profile_name=None, role_name=None, verbose=False):
+    aws_creds = {}
+    role_arn = None
+
+    if profile_name:
+        if verbose:
+            print("Reading AWS profile {}".format(profile_name))
+        aws_creds = aws_iam_utils.get_aws_profile_credentials(profile_name, verbose)
+    else:
+        # if a profile isn't specified, get the creds from the environment
+        access_key_id = os.environ.get('AWS_ACCESS_KEY_ID', None)
+        if not access_key_id:
+            msg = "No AWS profile specified and no AWS credentials found in the environment."
+            raise ProfileParsingError(msg)
+        if verbose:
+            print("Starting with AWS creds in environment ({})".format(
+                access_key_id
+            ))
+        aws_creds = {
+            'AWS_ACCESS_KEY_ID': access_key_id,
+            'AWS_SECRET_ACCESS_KEY': os.environ.get('AWS_SECRET_ACCESS_KEY', None),
+            'AWS_SESSION_TOKEN': os.environ.get('AWS_SESSION_TOKEN', None)
+        }
+
+    # if the profile itself specifies a role, first assume that role
+    if 'role_arn' in aws_creds:
+        print("Assuming role specified in profile {}: {}".format(
+            profile_name, aws_creds['role_arn']
+        ))
+        aws_creds = aws_iam_utils.generate_aws_temp_creds(
+            role_arn=aws_creds['role_arn'],
+            aws_creds=aws_creds,
+            verbose=verbose
+        )
+
+    # then if --role argument given here, further assume that role
+    if role_name:
+        if verbose:
+            print("Looking up role arn from role name: {}".format(role_name))
+        role_arn = aws_iam_utils.get_role_arn_from_name(
+            aws_creds,
+            role_name,
+            verbose=verbose)
+        print("Assuming role given as argument: {}".format(role_arn))
+        aws_creds = aws_iam_utils.generate_aws_temp_creds(
+            role_arn=role_arn,
+            aws_creds=aws_creds,
+            verbose=verbose
+        )
+    
+    return aws_creds
+
+
 def single_line_string(string):
     # replace all runs of whitespace to a single space
     string = re.sub('\s+', ' ', string)
@@ -30,6 +83,7 @@ def single_line_string(string):
 
 def generate_temp_env_file(
     aws_config,
+    region,
     custom_env_file,
     custom_env_args):
     """Write out a file with the environment variables for the AWS credentials which can be passed
@@ -55,11 +109,11 @@ def generate_temp_env_file(
         for env_arg in custom_env_args:
             envs.append(env_arg)
     if aws_config:
-        envs.append('AWS_ACCESS_KEY_ID=' + aws_config['access_key'])
-        envs.append('AWS_SECRET_ACCESS_KEY=' + aws_config['secret_key'])
-        envs.append('AWS_SESSION_TOKEN=' + aws_config['session_token'])
-        envs.append('AWS_DEFAULT_REGION=' + aws_config['region'])
-        envs.append('AWS_REGION=' + aws_config['region'])
+        envs.append('AWS_ACCESS_KEY_ID=' + aws_config['AWS_ACCESS_KEY_ID'])
+        envs.append('AWS_SECRET_ACCESS_KEY=' + aws_config['AWS_SECRET_ACCESS_KEY'])
+        envs.append('AWS_SESSION_TOKEN=' + aws_config['AWS_SESSION_TOKEN'])
+        envs.append('AWS_DEFAULT_REGION=' + region)
+        envs.append('AWS_REGION=' + region)
     # ensure stdout flows to docker unbuffered
     envs.append('PYTHONUNBUFFERED=1')
 
@@ -223,6 +277,10 @@ def main():
         global VERBOSE_MODE
         VERBOSE_MODE = True
 
+    region = args.region or \
+             os.environ.get('AWS_REGION',
+             os.environ.get('AWS_DEFAULT_REGION', None))
+
 
     if args.no_volume:
         print("WARNING: --no-volume is deprecated, there is no longer any default volume mount")
@@ -231,13 +289,14 @@ def main():
     aws_config = {}
     if args.aws_role_name:
         try:
-            aws_config = aws_iam_utils.generate_aws_temp_creds(
-                args.aws_role_name,
-                args.profile
-            )
-            if VERBOSE_MODE:
-                print("Role arn: {}".format(aws_config['role_arn']))
-            print("Generated temporary AWS credentials: {}".format(aws_config['access_key']))
+            aws_config = get_aws_creds(args.profile, args.aws_role_name, verbose=True)
+            # aws_config = aws_iam_utils.ZZZZ (
+            #     args.aws_role_name,
+            #     args.profile
+            # )
+            # if VERBOSE_MODE:
+            #     print("Role arn: {}".format(aws_config['role_arn']))
+            print("Generated temporary AWS credentials: {}".format(aws_config['AWS_ACCESS_KEY_ID']))
         except RoleNotFoundError as e:
             if VERBOSE_MODE:
                 print(str(e))
@@ -252,16 +311,17 @@ def main():
                 account_id,
                 e.credential_method))
             sys.exit(1)
-        aws_config['region'] = args.region or \
-             os.environ.get('AWS_REGION',
-             os.environ.get('AWS_DEFAULT_REGION', None))
-        if not aws_config['region']:
-            aws_config['region'] = 'us-east-1'
-            print("No AWS region specified or in environment, defaulting to {}".format(
-                aws_config['region']))
+        # aws_config['region'] = args.region or \
+        #      os.environ.get('AWS_REGION',
+        #      os.environ.get('AWS_DEFAULT_REGION', None))
+        # if not aws_config['region']:
+        #     aws_config['region'] = 'us-east-1'
+        #     print("No AWS region specified or in environment, defaulting to {}".format(
+        #         aws_config['region']))
 
     env_tmpfile = generate_temp_env_file(
         aws_config,
+        region,
         args.custom_env_file,
         args.envvars)
  
