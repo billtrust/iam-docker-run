@@ -160,7 +160,7 @@ If `--region` is provided that will take precidence, otherwise iam-docker-run wi
 
 ## Container Name Tempfile
 
-IAM-Docker-Run generates a random container name.  If this container name is needed for anything downstream such as the code debugging inside the container feature of VSCode, the container name needs to be discoverable.  IAM-Docker-Run enables this by generating a file which contains the name of the container and writes it in a pre-determined location.
+IAM-Docker-Run generates a random container name if the --name arg is not supplied.  If this container name is needed for anything downstream such as the code debugging inside the container feature of VSCode, the container name needs to be discoverable.  IAM-Docker-Run enables this by generating a file which contains the name of the container and writes it in a pre-determined location.
 
 The location of this file follows the:
 `/temp/<last directory name of pwd>/_container_name.txt`
