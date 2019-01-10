@@ -28,7 +28,8 @@ def get_aws_creds(profile_name=None, role_name=None, verbose=False):
     if profile_name:
         if verbose:
             print("Reading AWS profile {}".format(profile_name))
-        aws_creds = aws_iam_utils.get_aws_profile_credentials(profile_name, verbose)
+        aws_creds = aws_iam_utils.get_aws_profile_credentials(
+            profile_name, verbose)
     else:
         # if a profile isn't specified, get the creds from the environment
         access_key_id = os.environ.get('AWS_ACCESS_KEY_ID', None)
@@ -70,15 +71,15 @@ def get_aws_creds(profile_name=None, role_name=None, verbose=False):
             aws_creds=aws_creds,
             verbose=verbose
         )
-    
+
     return aws_creds
 
 
 def generate_temp_env_file(
-    aws_creds,
-    region,
-    custom_env_file,
-    custom_env_args):
+        aws_creds,
+        region,
+        custom_env_file,
+        custom_env_args):
     """Write out a file with the environment variables for the AWS credentials which can be passed
     into Docker.  If additional environment variables beyond the AWS creds are desired you can
     also specify a custom_env_file which contains them."""
@@ -103,7 +104,8 @@ def generate_temp_env_file(
             envs.append(env_arg)
     if aws_creds:
         envs.append('AWS_ACCESS_KEY_ID=' + aws_creds['AWS_ACCESS_KEY_ID'])
-        envs.append('AWS_SECRET_ACCESS_KEY=' + aws_creds['AWS_SECRET_ACCESS_KEY'])
+        envs.append('AWS_SECRET_ACCESS_KEY=' +
+                    aws_creds['AWS_SECRET_ACCESS_KEY'])
         if 'AWS_SESSION_TOKEN' in aws_creds:
             envs.append('AWS_SESSION_TOKEN=' + aws_creds['AWS_SESSION_TOKEN'])
         if region:
@@ -112,7 +114,7 @@ def generate_temp_env_file(
     # ensure stdout flows to docker unbuffered
     envs.append('PYTHONUNBUFFERED=1')
 
-    try:    
+    try:
         temp_env_file = tempfile.NamedTemporaryFile(delete=False, mode='w')
         for item in envs:
             temp_env_file.write('{}\n'.format(item))
@@ -140,7 +142,8 @@ def build_docker_run_command(args, container_name, env_tmpfile):
         entrypoint = '--entrypoint {}'.format(shell_cmd)
         cmd = ''
     elif args.full_entrypoint:
-        entrypoint = '--entrypoint {}'.format(args.full_entrypoint.split(' ')[0])
+        entrypoint = '--entrypoint {}'.format(
+            args.full_entrypoint.split(' ')[0])
         cmd = ' '.join(args.full_entrypoint.split(' ')[1:])
     else:
         entrypoint = args.entrypoint or ''
@@ -174,7 +177,8 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     if args.selinux:
         sourcecode_volume_mount += ':Z'
     dns = "--dns {}".format(args.dns) if args.dns else None
-    dns_search = "--dns-search {}".format(args.dns_search) if args.dns_search else None
+    dns_search = "--dns-search {}".format(
+        args.dns_search) if args.dns_search else None
     docker_volume = '-v /var/run/docker.sock:/var/run/docker.sock'
     additional_volume_mounts = ''
     if args.volumes:
@@ -256,6 +260,8 @@ def create_parser():
                         help='Passthrough to docker -p, e.g. 8080:80')
     parser.add_argument('--network', required=False,
                         help='Passthrough to docker --network argument')
+    parser.add_argument('--name', required=False,
+                        help='Passthrough to docker --name argument')
     parser.add_argument('-d', '--detached', default=False,
                         action='store_true', dest="detached",
                         help='Run Docker in detached mode')
@@ -288,9 +294,8 @@ def main():
     #     sys.exit(1)
 
     region = args.region or \
-             os.environ.get('AWS_REGION',
-             os.environ.get('AWS_DEFAULT_REGION', None))
-
+        os.environ.get('AWS_REGION',
+                       os.environ.get('AWS_DEFAULT_REGION', None))
 
     if args.no_volume:
         print("WARNING: --no-volume is deprecated, there is no longer any default volume mount")
@@ -302,7 +307,8 @@ def main():
     else:
         try:
             aws_creds = get_aws_creds(args.profile, args.role, verbose=True)
-            print("Generated temporary AWS credentials: {}".format(aws_creds['AWS_ACCESS_KEY_ID']))
+            print("Generated temporary AWS credentials: {}".format(
+                aws_creds['AWS_ACCESS_KEY_ID']))
         except ProfileParsingError as e:
             print(e)
             sys.exit(1)
@@ -329,7 +335,8 @@ def main():
                 if args.verbose:
                     print("Error retrieving AWS Account ID: {}".format(str(e)))
                 account_id = 'error'
-            credential_method = e.credential_method if hasattr(e, 'credential_method') else '(unknown)'
+            credential_method = e.credential_method if hasattr(
+                e, 'credential_method') else '(unknown)'
             print("Error assuming IAM role '{}' from account id {}, credential method: {}, error: {}".format(
                 args.role,
                 account_id,
@@ -343,8 +350,8 @@ def main():
         region,
         args.custom_env_file,
         args.envvars)
- 
-    container_name = docker_cli_utils.random_container_name()
+
+    container_name = args.name or docker_cli_utils.random_container_name()
     if os.environ.get('IAM_DOCKER_RUN_DISABLE_CONTAINER_NAME_TEMPFILE', None):
         print('Container name temp file writing is disabled')
     else:
@@ -352,7 +359,8 @@ def main():
             path_prefix = os.environ.get(
                 'IAM_DOCKER_RUN_CONTAINER_NAME_PATH_PREFIX', 'temp')
             container_name_file = \
-                docker_cli_utils.write_container_name_temp_file(container_name, path_prefix)
+                docker_cli_utils.write_container_name_temp_file(
+                    container_name, path_prefix)
             print("Container name file: {}".format(container_name_file))
         except docker_cli_utils.ContainerNameTempFileError as e:
             if VERBOSE_MODE:
@@ -369,7 +377,8 @@ def main():
     exit_code = None
     if not args.detached:
         try:
-            exit_code = docker_cli_utils.get_docker_inspect_exit_code(container_name)
+            exit_code = docker_cli_utils.get_docker_inspect_exit_code(
+                container_name)
             print("Container exited with code {}".format(exit_code))
         except DockerCliUtilError as e:
             print(e)
@@ -379,5 +388,5 @@ def main():
 
     if env_tmpfile:
         shell_utils.delete_file_silently(env_tmpfile)
-    
+
     sys.exit(exit_code if exit_code else 0)
