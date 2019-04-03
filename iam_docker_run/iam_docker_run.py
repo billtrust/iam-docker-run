@@ -183,7 +183,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     additional_volume_mounts = ''
     if args.volumes:
         for volume in args.volumes:
-            additional_volume_mounts += "-v {}".format(volume)
+            additional_volume_mounts += "-v {} ".format(volume)
 
     command = Template(single_line_string("""
         docker run
