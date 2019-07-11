@@ -37,7 +37,7 @@ class TestIamDockerRun(unittest.TestCase):
             _ = client.get_policy(PolicyArn=policy_arn)
         except client.exceptions.NoSuchEntityException:
             return False
-        except Exception as e:
+        except Exception:
             raise
         return True
 
@@ -48,7 +48,7 @@ class TestIamDockerRun(unittest.TestCase):
             _ = client.get_role(RoleName=role_name)
         except client.exceptions.NoSuchEntityException:
             return False
-        except Exception as e:
+        except Exception:
             raise
         return True
 
@@ -209,3 +209,16 @@ class TestIamDockerRun(unittest.TestCase):
         env = TestFileEnvironment('./test-output')
         result = env.run(' '.join(command))
         assert 'MyTestEnvArg' in result.stdout
+
+
+    def test_shm_size_argument(self):
+        command = [
+            'iam-docker-run',
+            '-e TESTENVARG=MyTestEnvArg',
+            '--image debian:latest',
+            '--shm-size 128m',
+            "--full-entrypoint \"df /dev/shm -m --output=size | sed 1d | sed 's/ //g'\""
+        ]
+        env = TestFileEnvironment('./test-output')
+        result = env.run(' '.join(command))
+        assert '128' in result.stdout

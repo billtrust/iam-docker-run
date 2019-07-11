@@ -17,7 +17,7 @@ A related effort is [IAM-Starter](https://github.com/billtrust/iam-starter) whic
 ## Installation
 
 ```shell
-$ pip install iam-docker-run
+pip install iam-docker-run
 ```
 
 ## Basic Example Usage
@@ -25,7 +25,7 @@ $ pip install iam-docker-run
 Say you are developing a console application using AWS resources and are in your project's root directory and want to execute your application using your latest source code and the IAM role created for your project.
 
 ```shell
-$ iam-docker-run \
+iam-docker-run \
     --image mycompany/myservice:latest \
     --role role-myservice-task
 ```
@@ -33,7 +33,7 @@ $ iam-docker-run \
 You can alternatively specify a local AWS profile, then the container will run with the credentials given by that role.  This profile would have to exist locally in your `~/.aws/config` file, which can be created with `aws configure --profile myprofile`.
 
 ```shell
-$ iam-docker-run \
+iam-docker-run \
     --image mycompany/myservice:latest \
     --profile myprofile
 ```
@@ -41,7 +41,7 @@ $ iam-docker-run \
 Or you can specify a role and a profile.  In this case the profile provides the credentials necessary to assume the role.
 
 ```shell
-$ iam-docker-run \
+iam-docker-run \
     --image mycompany/myservice:latest \
     --role role-myservice-task \
     --profile myprofile
@@ -58,13 +58,13 @@ For a full list of arguments, run `iam-docker-run -h`.
 The Docker syntax for overriding an entrypoint with anything more than one word can seem couterintuitive.  With the Docker syntax, the entrypoint can only be the first command and all arguments to that are separated out on the cmd, so if you want to run `python myapp.py --myarg test123`, then `python` is your entrypoint and the rest go on your cmd, to produce a docker run statement like:
 
 ```shell
-$ docker run --entrypoint python mycompany/myimage myapp.py --myarg test123
+docker run --entrypoint python mycompany/myimage myapp.py --myarg test123
 ```
 
 To make things easier, iam-docker-run provides the `--full-entrypoint` argument, so you can use it like this:
 
 ```shell
-$ iam-docker-run \
+iam-docker-run \
     --image mycompany/myimage \
     --full-entrypoint "python myapp.py --myarg test123"
 ```
@@ -74,7 +74,7 @@ $ iam-docker-run \
 If you want to debug something in the container, just add a `--shell` argument and it will override the entrypoint with `/bin/bash`.  If you wish to use an alternate shell, you can override this with the following enrivonment variable:
 
 ```shell
-$ export IAM_DOCKER_RUN_SHELL_COMMAND="/bin/sh"
+export IAM_DOCKER_RUN_SHELL_COMMAND="/bin/sh"
 ```
 
 It is especially convenient to use this command to add to the end of any existing set of arguments.  It will override both the default ENTRYPOINT defined in the Dockerfile as well as the `--full-entrypoint` argument.
@@ -168,12 +168,13 @@ The location of this file follows the:
 You can override the first part of the prefix with the following environment variable:
 
 ```shell
-$ export IAM_DOCKER_RUN_CONTAINER_NAME_PATH_PREFIX=/tmp/somewhere/else
+export IAM_DOCKER_RUN_CONTAINER_NAME_PATH_PREFIX=/tmp/somewhere/else
 ```
 
 Or you can disable this entirely by setting:
+
 ```shell
-$ export IAM_DOCKER_RUN_DISABLE_CONTAINER_NAME_TEMPFILE=true
+export IAM_DOCKER_RUN_DISABLE_CONTAINER_NAME_TEMPFILE=true
 ```
 
 ## Shortcut
@@ -181,7 +182,7 @@ $ export IAM_DOCKER_RUN_DISABLE_CONTAINER_NAME_TEMPFILE=true
 An alternate way to invoke iam-docker-run on the command line is to use the alias `idr`.  Just less typing.
 
 ```shell
-$ idr --image busybox --role myrole
+idr --image busybox --role myrole
 ```
 
 ## Example CI workflow
@@ -279,4 +280,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-

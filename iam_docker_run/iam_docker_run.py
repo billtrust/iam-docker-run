@@ -179,11 +179,13 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     dns = "--dns {}".format(args.dns) if args.dns else None
     dns_search = "--dns-search {}".format(
         args.dns_search) if args.dns_search else None
+    shm_size = "--shm-size {}".format(args.shm_size) if args.shm_size else None
     docker_volume = '-v /var/run/docker.sock:/var/run/docker.sock'
     additional_volume_mounts = ''
     if args.volumes:
         for volume in args.volumes:
             additional_volume_mounts += "-v {} ".format(volume)
+
 
     command = Template(single_line_string("""
         docker run
@@ -197,6 +199,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             $entrypoint
             $dns
             $dns_search
+            $shm_size
             $network
             $image
             $cmd
@@ -212,6 +215,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             'entrypoint': entrypoint,
             'dns': dns or '',
             'dns_search': dns_search or '',
+            'shm_size': shm_size or '',
             'network': "--network {}".format(args.network) if args.network else '',
             'image': args.image,
             'cmd': cmd
@@ -270,6 +274,8 @@ def create_parser():
     parser.add_argument('--shell', action='store_true', default=False)
     parser.add_argument('--region', required=False)
     parser.add_argument('--verbose', action='store_true', default=False)
+    parser.add_argument('--shm-size', required=False,
+                        help='Passthrough to docker --shm-size')
     return parser
 
 
