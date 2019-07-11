@@ -106,7 +106,7 @@ As the main use case is a development workflow, by default the container runs in
 The `--host-source-path` and `--container-source-path` arguments are designed to make it easy to mount your source code into the container when using Docker in a developer workflow where you make changes in your IDE on your host computer and want that source code immediately inserted into the container.  The `--host-source-path` argument can be relative.  In prior versions of IAM-Docker-Run the source code mount was automatic and required the `--no-volume` argument to prevent mounting it.  This automatic mount behavior has been removed however these arguments will remain for backward compatibility.
 
 ```shell
-$ iam-docker-run \
+iam-docker-run \
     --image mycompany/myservice \
     --role role-myservice-task \
     --host-source-path ./mysource \
@@ -127,8 +127,8 @@ If you want to enable Docker in Docker, you can mount the Docker socket by addin
 
 ```shell
 # install the docker client
-$ curl -fsSL get.docker.com -o get-docker.sh
-$ sh get-docker.sh
+curl -fsSL get.docker.com -o get-docker.sh
+sh get-docker.sh
 ```
 
 ### Adding a portmap
@@ -136,7 +136,7 @@ $ sh get-docker.sh
 You can use `--portmap` or `-p`, which is a direct match to the `docker run -p` argument, for example:
 
 ```shell
-$ iam-docker-run \
+iam-docker-run \
     --image mycompany/myservice \
     --role role-myservice-task \
     --portmap 30000:3000
@@ -147,7 +147,7 @@ The `--portmap 30000:3000` argument in this example would take a HTTP server lis
 Note that you can use multiple portmaps as follows:
 
 ```shell
-$ iam-docker-run \
+iam-docker-run \
     --image mycompany/myservice \
     --role role-myservice-task \
     -p 4430:443 \
@@ -190,7 +190,7 @@ idr --image busybox --role myrole
 The second use case for iam-docker-run is for running tests from continuous integration.  
 
 ```shell
-$ iam-docker-run \
+iam-docker-run \
     --image mycompany/myimage \
     --role role-myservice-task \
     --full-entrypoint "/bin/bash /tests/run-integration-test.sh" \
