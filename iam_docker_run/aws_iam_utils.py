@@ -97,6 +97,9 @@ def get_aws_profile_credentials(profile_name, verbose=False):
     try:
         aws_creds['AWS_ACCESS_KEY_ID'] = credentials.get(source_profile, 'aws_access_key_id')
         aws_creds['AWS_SECRET_ACCESS_KEY'] = credentials.get(source_profile, 'aws_secret_access_key')
+        aws_session_token = credentials.get(source_profile, 'aws_session_token', fallback=False)
+        if aws_session_token:
+            aws_creds['AWS_SESSION_TOKEN'] = aws_session_token
         if verbose:
             print("Found source profile {} in ~/.aws/credentials, access key: {}".format(
                 source_profile, aws_creds['AWS_ACCESS_KEY_ID']
