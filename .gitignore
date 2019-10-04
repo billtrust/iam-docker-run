@@ -4,3 +4,4 @@ build/
 *.egg-info/
 test-output/
 test-input/
+.idea
