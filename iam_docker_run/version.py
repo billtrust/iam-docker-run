@@ -1,4 +1,4 @@
-__version__ = '0.3.5'
+__version__ = '0.3.6'
 __title__ = 'iam-docker-run'
 __description__ = 'Run Docker containers within the context of an AWS IAM Role, and other development workflow helpers.'
 __url__ = 'https://github.com/billtrust/iam-docker-run'

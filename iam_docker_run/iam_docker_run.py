@@ -201,6 +201,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             $dns_search
             $shm_size
             $network
+            $workdir
             $image
             $cmd
         """)) \
@@ -217,6 +218,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             'dns_search': dns_search or '',
             'shm_size': shm_size or '',
             'network': "--network {}".format(args.network) if args.network else '',
+            'workdir': "--workdir {}".format(args.workdir) if args.workdir else '',
             'image': args.image,
             'cmd': cmd
         })
@@ -271,6 +273,8 @@ def create_parser():
                         help='Run Docker in detached mode')
     parser.add_argument('--interactive', action='store_true', default=False,
                         help='Run Docker in interactive terminal mode (-it)')
+    parser.add_argument('-w', '--workdir', required=False, dest='workdir',
+                        help='Passthrough to dcoker --workdir argument')
     parser.add_argument('--shell', action='store_true', default=False)
     parser.add_argument('--region', required=False)
     parser.add_argument('--verbose', action='store_true', default=False)
