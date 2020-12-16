@@ -179,6 +179,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     dns = "--dns {}".format(args.dns) if args.dns else None
     dns_search = "--dns-search {}".format(
         args.dns_search) if args.dns_search else None
+    add_host = "--add-host {}".format(args.add_host) if args.add_host else None
     shm_size = "--shm-size {}".format(args.shm_size) if args.shm_size else None
     docker_volume = '-v /var/run/docker.sock:/var/run/docker.sock'
     additional_volume_mounts = ''
@@ -199,6 +200,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             $entrypoint
             $dns
             $dns_search
+            $add_host
             $shm_size
             $network
             $workdir
@@ -216,6 +218,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             'entrypoint': entrypoint,
             'dns': dns or '',
             'dns_search': dns_search or '',
+            'add_host': add_host or '',
             'shm_size': shm_size or '',
             'network': "--network {}".format(args.network) if args.network else '',
             'workdir': "--workdir {}".format(args.workdir) if args.workdir else '',
@@ -261,6 +264,8 @@ def create_parser():
                         help='Passthrough to docker --dns')
     parser.add_argument('--dns-search', required=False,
                         help='Passthrough to docker --dns-search')
+    parser.add_argument('--add-host', required=False,
+                        help='Passthrough to docker --add-host')
     parser.add_argument('-p', '--portmap', required=False,
                         action="append", dest="portmaps",
                         help='Passthrough to docker -p, e.g. 8080:80')
