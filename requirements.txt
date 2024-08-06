@@ -5,4 +5,4 @@ jmespath==0.9.3
 python-dateutil==2.7.3
 s3transfer==0.1.13
 six==1.11.0
-pypandoc==1.4
+pypandoc==1.8

@@ -117,6 +117,10 @@ iam-docker-run \
 
 You can mount additional volumes by `-v` or `--volume`, which is passthrough to the `docker -v` argument.  These are additive with the source code volume mount (if specified) and the docker in docker mount.
 
+### Assigning additional capabilities
+
+You can assign additional capabilities to a container by using `--cap-add`, which is passed through to the `docker --cap-add` argument.
+
 ### Overcoming SELinux with volume mounts
 
 If you are running SELinux and experience permission denied issues when mounting volumes, specify the `--selinux` argument, which will alter the dockr run volume mount argument so that the volume is readable.

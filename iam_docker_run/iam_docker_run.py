@@ -187,6 +187,10 @@ def build_docker_run_command(args, container_name, env_tmpfile):
         for volume in args.volumes:
             additional_volume_mounts += "-v {} ".format(volume)
 
+    additional_caps = ''
+    if args.caps:
+        for cap in args.caps:
+            additional_caps += "--cap-add {} ".format(cap)
 
     command = Template(single_line_string("""
         docker run
@@ -196,6 +200,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             $env_file
             $sourcecode_volume
             $additional_volumes
+            $additional_caps
             $mount_docker
             $entrypoint
             $dns
@@ -214,6 +219,7 @@ def build_docker_run_command(args, container_name, env_tmpfile):
             'env_file': "--env-file {}".format(env_tmpfile) if env_tmpfile else '',
             'sourcecode_volume': sourcecode_volume_mount if sourcecode_volume_mount else '',
             'additional_volumes': additional_volume_mounts,
+            'additional_caps': additional_caps,
             'mount_docker': docker_volume if args.mount_docker else '',
             'entrypoint': entrypoint,
             'dns': dns or '',
@@ -250,6 +256,9 @@ def create_parser():
     parser.add_argument('-v', '--volume', required=False,
                         action="append", dest="volumes",
                         help='Passthrough to docker -v, additive with default src/app volume mount')
+    parser.add_argument('--cap-add', required=False,
+                        action="append", dest="caps",
+                        help='Passthrough to docker --cap-add')
     parser.add_argument('--mount-docker', action='store_true', default=False,
                         help='Mount the docker sock volume to enable DIND')
     parser.add_argument('--no-volume', action='store_true', default=False,
