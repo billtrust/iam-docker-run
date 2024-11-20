@@ -177,8 +177,12 @@ def build_docker_run_command(args, container_name, env_tmpfile):
     if args.selinux:
         sourcecode_volume_mount += ':Z'
     dns = "--dns {}".format(args.dns) if args.dns else None
-    dns_search = "--dns-search {}".format(
-        args.dns_search) if args.dns_search else None
+
+    if args.dns_search:
+        dns_search = ' '.join("--dns-search {}".format(domain) for domain in args.dns_search)
+    else:
+        dns_search = None
+
     add_host = "--add-host {}".format(args.add_host) if args.add_host else None
     shm_size = "--shm-size {}".format(args.shm_size) if args.shm_size else None
     docker_volume = '-v /var/run/docker.sock:/var/run/docker.sock'
@@ -271,7 +275,7 @@ def create_parser():
                         help='Passthrough to docker command')
     parser.add_argument('--dns', required=False,
                         help='Passthrough to docker --dns')
-    parser.add_argument('--dns-search', required=False,
+    parser.add_argument('--dns-search',nargs='+', required=False,
                         help='Passthrough to docker --dns-search')
     parser.add_argument('--add-host', required=False,
                         help='Passthrough to docker --add-host')
